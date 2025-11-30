@@ -1,0 +1,3 @@
+# Librería necesarias para el proyecto (si veis que necesitamos alguna otra, ponedla aquí):
+streamlit
+bentoml==1.4.12
