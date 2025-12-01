@@ -18,3 +18,7 @@ El fichero **requirements.txt** incluye todas las dependencias previas para trab
 ```bash
 pip install -r requirements.txt
 ```
+## Pasos para ejecutar el ui.py
+Primero tener un enironment con las librerias necesarias. Instalar streamlit, pandas, matplotlib, seaborn y altair.
+Como ejecutar: desde la carpeta general del proyecto, usar este comando: "streamlit run src/Streamlit/ui.py"
+Al ejecutar el comando, clickar en la url que sale.
