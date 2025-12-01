@@ -18,7 +18,14 @@ El fichero **requirements.txt** incluye todas las dependencias previas para trab
 ```bash
 pip install -r requirements.txt
 ```
-## Pasos para ejecutar el ui.py
-Primero tener un enironment con las librerias necesarias. Instalar streamlit, pandas, matplotlib, seaborn y altair.
-Como ejecutar: desde la carpeta general del proyecto, usar este comando: "streamlit run src/Streamlit/ui.py"
-Al ejecutar el comando, clickar en la url que sale.
+
+## Algoritmos de ML trabajados:
+1. Primero hemos hecho una regresión logística para predecir el output (binario) de un estado maquinario. En nuestro caso intentaremos predecir la variable de **Machine failure**
+
+
+## Pasos para ejecutar la aplicación de Streamlit (ui.py)
+Dentro del directorio del proyecto, ejecutar el siguiente comando para abrir localmente la interfaz gráfica trabajada con **Streamlit**.
+```bash
+streamlit run src/Streamlit/ui.py
+```
+
