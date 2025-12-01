@@ -13,7 +13,7 @@ from sklearn.ensemble import RandomForestClassifier # clasificación de errores
 
 # Para cada algoritmo haremos una función diferente; creando un modelo diferente para la model store, nombre diferente, ...
 def logistic_regression():
-    dataset = pd.read_csv("ADDPLI---Proyecto-Final/data/ai4i2020.csv")
+    dataset = pd.read_csv("data/ai4i2020.csv")
 
     # Como X cogemos todas las columnas menos la variable que usaremos como 'y' y la variable de identificador
     X, y = dataset.drop(columns=["UDI", "Machine failure"]), dataset["Machine failure"] 
@@ -52,6 +52,46 @@ def logistic_regression():
     print(f"Modelo de Regresión Logística guardado en la BentoML store como: {bento_lr}")
 
 
+def random_forest():
+    dataset = pd.read_csv("data/ai4i2020.csv")
+
+    # Como X cogemos todas las columnas menos la variable que usaremos como 'y' y la variable de identificador
+    X, y = dataset.drop(columns=["UDI", "Machine failure", "TWF", "HDF", "PWF", "RNF", "OSF"]), dataset[["TWF", "HDF", "PWF", "RNF", "OSF"]]
+
+    # Pasamos a númericas las variables categóricas
+    columnas_categoricas = X.select_dtypes(include=["object"]).columns
+    X = pd.get_dummies(X, columns=columnas_categoricas, drop_first=True)
+
+    # Dividimos el dataset
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2, random_state=42)
+
+    # Inicializamos el modelo de regresión logística
+    rf = RandomForestClassifier()
+    rf.fit(X_train, y_train)
+
+    # Realizamos las predicciones
+    preds = rf.predict(X_test)
+
+    # Por ahora solo tendremos como métrica de evaluación la accuracy
+    accuracy = accuracy_score(y_test, preds)
+    print(f"Accuracy obtenida: {accuracy:.4f}")
+
+    # A partir de ahora, configuraremos el modelo para que sea compatible con BentoML
+    bento_rf = bentoml.sklearn.save_model(
+        "ai4i2020_random_forest",
+        rf,
+        metadata={
+            "fecha_entrenamiento": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "dataset": "ai4i2020",
+            "framework": "scikit-learn",
+            "algoritmo": "clasificación con random forest",
+            "precision": accuracy,
+            "carta_favorita_cr": "Reina Arquera MOMO SHOW"
+        },
+    )
+    print(f"Modelo de Clasificación con Ranodm Forest guardado en la BentoML store como: {bento_rf}")
+
 # Función main(); cada algoritmo tendrá su función
 if __name__ == "__main__":
-    logistic_regression()
+    # logistic_regression()
+    random_forest()
