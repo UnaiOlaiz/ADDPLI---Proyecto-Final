@@ -22,14 +22,16 @@ pip install -r requirements.txt
 ## Algoritmos de ML trabajados:
 1. Primero hemos hecho una **Regresión Logística** para predecir el output (binario) de un estado maquinario. En nuestro caso intentaremos predecir la variable de **Machine failure**; si el proceso resulta en error, devolverá un 1, si no un 0.
 
-2. Después, hemos creado un clasificador con **Random Forest** para clasificar el tipo de error cometido, siendo el error uno de entre cuatro tipos: 
+2. Después, hemos creado un clasificador con **Random Forest** para clasificar el tipo de error cometido, siendo el error uno de entre cinco tipos: 
     - TWF: Fallo por desgaste de herramienta.
     - HDF: Fallo por una mala disipación de calor.
     - PWF: Falla por potencia fuera de rango.
     - OSF: Fallo por un sobreesfuerzo mecánico.
     - RNF: Un fallo aleatorio.
 
-3. Para alistar los modelos creados, introduciremos el siguiente comando:
+3. También hemos empleado los **Support Vector Machines (SVMs)** como algoritmo más complejo para realizar la clasificación binaria de la misma variable usada con la **Regresión Logística**. Cumpliendo la misma funcionalidad que éste, las **SVMs** se caracterizan por ser algoritmos de clasificación más pesados y profundos, resultando en un entrenamiento más lento.
+
+Para alistar los modelos creados, introduciremos el siguiente comando:
 ```bash
 bentoml models list
 ```
