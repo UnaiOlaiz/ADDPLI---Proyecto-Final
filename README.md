@@ -7,10 +7,10 @@
 ├── requirements.txt (fichero de dependencias)
 └── src (source)
     ├── BentoML (rama de BentoML)
-    │   ├── service.py (script del servicio)
-    │   └── train.py (script de entrenamiento)
+    │   ├── service.ipynb (script del servicio)
+    │   └── train.ipynb (script de entrenamiento)
     └── Streamlit (rama de Streamlit)
-        └── ui.py (script de interfaz gráfica)
+        └── ui.ipynb (script de interfaz gráfica)
 ```
 
 ## Instalación de dependencias
