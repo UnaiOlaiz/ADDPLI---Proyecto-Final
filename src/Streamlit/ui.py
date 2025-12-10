@@ -40,7 +40,16 @@ st.sidebar.table(fault_info)
 # Contenido principal
 st.title("Análisis y Predicción de Fallos ")
 st.markdown("""
-Aqui podemos explicar algo
+Este panel utiliza el dataset **WAI4I 2020**, que contiene datos de sensores de máquinas industriales para analizar y predecir fallos.  
+Incluye variables como temperatura del aire y del proceso, velocidad de rotación, torque y desgaste de la herramienta, así como registros de distintos tipos de fallos:  
+
+- **TWF:** Desgaste de herramienta  
+- **HDF:** Disipación de calor  
+- **PWF:** Potencia fuera de rango  
+- **OSF:** Sobreesfuerzo mecánico  
+- **RNF:** Falla aleatoria  
+
+Cada registro corresponde a una máquina en un momento determinado. Con esta información podemos explorar patrones, estudiar relaciones entre variables y desarrollar modelos de mantenimiento predictivo.
 """)
 
 # Exploración de datos
@@ -55,32 +64,31 @@ if opcion == "Exploración de datos":
     with col1:
         st.subheader("Distribución de los tipos de fallos")
 
-        FALLAS = ["TWF", "HDF", "PWF", "OSF", "RNF"]  # Lista fija de fallos
+        fallos_df = pd.DataFrame({
+            "Tipo de fallo": fallos_cols,
+            "Cantidad": df[fallos_cols].sum().values
+        })
+        fallos_df["Porcentaje"] = (fallos_df["Cantidad"] / fallos_df["Cantidad"].sum() * 100).round(1)
+        fallos_df["label"] = fallos_df["Tipo de fallo"] + " (" + fallos_df["Porcentaje"].astype(str) + "%)"
 
-        # Contar cuántos fallos ocurrieron en cada tipo
-        counts = df[FALLAS].sum().sort_values(ascending=False)
-
-        # Pie chart
-        fig, ax = plt.subplots(figsize=(4, 4))
-        ax.pie(
-            counts.values,
-            labels=counts.index,
-            autopct="%1.1f%%",
-            startangle=90
+        chart = alt.Chart(fallos_df).mark_arc(innerRadius=50).encode(
+            theta=alt.Theta(field="Cantidad", type="quantitative"),
+            color=alt.Color(field="Tipo de fallo", type="nominal"),
+            tooltip=["label:N", "Cantidad:Q"]
         )
-        ax.axis("equal")
-        st.pyplot(fig)
+        st.altair_chart(chart, use_container_width=True)
 
        
 
     # Gráfico interactivo: fallos vs variable seleccionada en col2
+    # Gráfico interactivo mejorado: fallos vs variable seleccionada en col2
     with col2:
         st.subheader("Cantidad de fallos por tipo de máquina y tipo de fallo")
 
         # Extraer la categoría del producto (L, M, H)
         df["MachineType"] = df["Product ID"].str[0]
 
-        # Agrupa por tipo de fallo sumando por tipo de máquina
+        # Agrupa por tipo de fallo sumando por tipo de máquinaa
         fail_long = (
             df.groupby(["MachineType"])[fallos_cols]
             .sum()
@@ -92,32 +100,31 @@ if opcion == "Exploración de datos":
             )
         )
 
-        # Colores 
-        color_scale = alt.Scale(
-            domain=sorted(df["MachineType"].unique()),
-            range=["#4CAF50", "#FFC107", "#F44336"]  
-        )
+        # Filtro interactivo por máquina
+        selected_machine = st.selectbox("Filtra por tipo de máquina:", sorted(df["MachineType"].unique()))
+        fail_filtered = fail_long[fail_long["MachineType"] == selected_machine]
 
-        stacked_bar = (
-            alt.Chart(fail_long)
+        # Colores consistentes para tipos de fallo
+        color_scale = alt.Scale(domain=fallos_cols, range=["#4CAF50", "#FFC107", "#F44336", "#2196F3", "#9C27B0"])
+
+        # Gráfico de barras horizontales interactivo
+        bar_chart = (
+            alt.Chart(fail_filtered)
             .mark_bar()
             .encode(
-                x=alt.X("Tipo de fallo:N", title="Tipo de fallo"),
-                y=alt.Y("sum(Cantidad):Q", title="Cantidad total"),
-                color=alt.Color("MachineType:N", title="Tipo de máquina", scale=color_scale),
+                y=alt.Y("Tipo de fallo:N", sort="-x", title="Tipo de fallo"),
+                x=alt.X("Cantidad:Q", title="Cantidad total"),
+                color=alt.Color("Tipo de fallo:N", title="Tipo de fallo", scale=color_scale),
                 tooltip=[
-                  alt.Tooltip("Tipo de fallo:N"),
-                 alt.Tooltip("MachineType:N", title="Máquina"),
-                 alt.Tooltip("Cantidad:Q", format=",.0f")
+                    alt.Tooltip("Tipo de fallo:N"),
+                    alt.Tooltip("Cantidad:Q", format=",")
                 ]
             )
-            .properties(
-                width=500,
-                height=350
-            )
+            .properties(width=500, height=350)
         )
 
-        st.altair_chart(stacked_bar, use_container_width=True)
+        st.altair_chart(bar_chart, use_container_width=True)
+
         
     
 
@@ -162,6 +169,25 @@ if opcion == "Exploración de datos":
         sns.heatmap(co_occur, annot=True, fmt="d", cmap="Blues", ax=ax)
         st.pyplot(fig)
     
+        # Resumen estadístico general
+    st.subheader("Resumen general de fallos")
+
+    # Total de fallos
+    total_fallos = df[fallos_cols].sum().sum()
+
+    # Tipo de fallo más frecuente
+    tipo_mas_frecuente = df[fallos_cols].sum().idxmax()
+    cantidad_mas_frecuente = df[fallos_cols].sum().max()
+
+    # Número de máquinas con al menos un fallo
+    num_maquinas_fallo = df[df[fallos_cols].sum(axis=1) > 0]["Product ID"].nunique()
+
+    # Mostrar KPIs en columnas
+    kpi1, kpi2, kpi3 = st.columns(3)
+
+    kpi1.metric("Total de fallos", f"{total_fallos}")
+    kpi2.metric("Tipo de fallo más frecuente", f"{tipo_mas_frecuente} ({cantidad_mas_frecuente})")
+    kpi3.metric("Máquinas con al menos un fallo", f"{num_maquinas_fallo}")
     
         
 
@@ -177,7 +203,7 @@ if opcion == "Exploración de datos":
         st.dataframe(df.describe())
         
 
-    
+
 
 
    
