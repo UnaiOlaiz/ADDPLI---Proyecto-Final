@@ -2,3 +2,6 @@
 streamlit
 bentoml==1.4.12
 xgboost
+pandas
+matplotlib
+plotly
