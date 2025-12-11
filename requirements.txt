@@ -5,3 +5,6 @@ xgboost
 pandas
 matplotlib
 plotly
+tensorflow
+requests
+scikit-learn
