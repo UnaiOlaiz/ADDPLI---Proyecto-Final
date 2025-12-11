@@ -1,159 +1,108 @@
 import bentoml
 import numpy as np
-from bentoml.io import NumpyNdarray
-from bentoml import Runnable
+from pydantic import BaseModel, Field
 
-# Aquí va el modelo entrenado que queremos servir
-XGB_TAG   = "ai4i2020_xgbclassifier:latest"
-LOGR_TAG  = "ai4i2020_logistic_regression:latest"
-SVM_TAG   = "ai4i2020_support_vector_machine:latest"
-RF_TAG    = "ai4i2020_random_forest:latest"
-HDBSCAN_TAG = "ai4i2020_hdbscan:latest"
+XGB_TAG            = "ai4i2020_xgbclassifier:latest"
+LOGR_TAG           = "ai4i2020_logistic_regression:latest"
+SVM_TAG            = "ai4i2020_support_vector_machine:latest"
+RF_TAG             = "ai4i2020_random_forest:latest"
+HDBSCAN_MODEL_TAG  = "ai4i2020_hdbscan:latest"
 
-# Cargar el modelo sklearn como un runner de BentoML
-xgb_runner  = bentoml.sklearn.get(XGB_TAG).to_runner()
-logr_runner = bentoml.sklearn.get(LOGR_TAG).to_runner()
-svm_runner  = bentoml.sklearn.get(SVM_TAG).to_runner()
-rf_runner   = bentoml.sklearn.get(RF_TAG).to_runner()
-hdbscan_runner = bentoml.sklearn.get(HDBSCAN_TAG).to_runner()
+XGB_SCALER_TAG       = "ai4i2020_scaler_xgbclassifier:latest"
+LOGR_SCALER_TAG      = "ai4i2020_scaler_logistic_regression:latest"
+SVM_SCALER_TAG       = "ai4i2020_scaler_svm:latest"
+RF_SCALER_TAG        = "ai4i2020_scaler_random_forest:latest"
+HDBSCAN_SCALER_TAG   = "ai4i2020_scaler_hdbscan:latest"
 
-# Tag del scaler dentro del Model Store
-XGB_SCALER_TAG  = "ai4i2020_scaler_xgbclassifier:latest"
-LOGR_SCALER_TAG = "ai4i2020_scaler_logistic_regression:latest"
-SVM_SCALER_TAG  = "ai4i2020_scaler_svm:latest"
-RF_SCALER_TAG   = "ai4i2020_scaler_random_forest:latest"
-HDBSCAN_TAG     = "ai4i2020_scaler_hdbscan:latest"
 
-class XGBScalerRunnable(Runnable):
-    # obligatorio para BentoML runner/strategy
-    SUPPORTED_RESOURCES = ("cpu",)
-    # indicar capacidades de concurrencia que BentoML consulta
-    SUPPORTS_CPU_MULTI_THREADING = True
+# Esquema para modelos de 12 columnas (Logistic, SVM, XGB)
+class Input12Features(BaseModel):
+    # Definimos que esperamos una lista de listas de floats
+    input_data: list[list[float]] = Field(
+        default=[[298.9, 309.1, 2861, 4.6, 143, 0, 0, 1, 0, 0, 1, 0]],
+        description="Matriz de entrada con 12 características."
+    )
 
-    def __init__(self):
-        print(f"Cargando el scaler desde el Model Store {XGB_SCALER_TAG}...")
-        self.scaler = bentoml.picklable_model.load_model(XGB_SCALER_TAG)
-        print("¡Scaler cargado!")
+# Esquema para modelos de 7 columnas (Random Forest, HDBSCAN)
+class Input7Features(BaseModel):
+    input_data: list[list[float]] = Field(
+        default=[[298.8, 308.9, 1455, 41.3, 208, 1, 0]],
+        description="Matriz de entrada con 7 características."
+    )
 
-    # @bentoml.runnable.method define una función que el runner puede llamar
-    @Runnable.method(batchable=True, batch_dim=0)
-    def transform(self, input_data: np.ndarray) -> np.ndarray:
-        return self.scaler.transform(input_data)
+print("Cargando MODELOS del Model Store...")
+xgb_model   = bentoml.sklearn.load_model(XGB_TAG)
+logr_model  = bentoml.sklearn.load_model(LOGR_TAG)
+svm_model   = bentoml.sklearn.load_model(SVM_TAG)
+rf_model    = bentoml.sklearn.load_model(RF_TAG)
+hdb_model   = bentoml.sklearn.load_model(HDBSCAN_MODEL_TAG)
+
+print("Cargando SCALERS del Model Store...")
+xgb_scaler   = bentoml.picklable_model.load_model(XGB_SCALER_TAG)
+logr_scaler  = bentoml.picklable_model.load_model(LOGR_SCALER_TAG)
+svm_scaler   = bentoml.picklable_model.load_model(SVM_SCALER_TAG)
+rf_scaler    = bentoml.picklable_model.load_model(RF_SCALER_TAG)
+hdb_scaler   = bentoml.picklable_model.load_model(HDBSCAN_SCALER_TAG)
+
+print("Modelos y scalers cargados.")
+
+@bentoml.service(name="AI4I2020__Failure__Prediction__Service")
+class AI4I2020FailurePredictionService:
+    """
+    Servicio BentoML con Inputs definidos mediante Pydantic
+    para mostrar ejemplos en la UI (Swagger).
+    """
+
+    # Convertir pydantic a numpy y validar
+    def _prepare_data(self, pydantic_input, expected_cols: int) -> np.ndarray:
+        # Extraemos la lista del objeto pydantic y convertimos a numpy
+        data = np.array(pydantic_input.input_data)
+        
+        # Aseguramos 2D
+        if data.ndim == 1:
+            data = data.reshape(1, -1)
+            
+        # Validamos columnas
+        if data.shape[1] != expected_cols:
+            raise ValueError(f"Se esperaban {expected_cols} columnas, recibidas {data.shape[1]}.")
+            
+        return data
+
+    # Logistic Regression (Usa Input12Features)
+    @bentoml.api
+    def predict_logreg(self, input_obj: Input12Features) -> np.ndarray:
+        data = self._prepare_data(input_obj, 12)
+        scaled = logr_scaler.transform(data)
+        return logr_model.predict_proba(scaled)
+
+    # Random Forest (Usa Input7Features)
+    @bentoml.api
+    def predict_random_forest(self, input_obj: Input7Features) -> np.ndarray:
+        data = self._prepare_data(input_obj, 7)
+        scaled = rf_scaler.transform(data)
+        return rf_model.predict(scaled)
+
+    # SVM (Usa Input12Features)
+    @bentoml.api
+    def predict_svm(self, input_obj: Input12Features) -> np.ndarray:
+        data = self._prepare_data(input_obj, 12)
+        scaled = svm_scaler.transform(data)
+        return svm_model.predict_proba(scaled)
+
+    # XGBoost (Usa Input12Features)
+    @bentoml.api
+    def predict_xgb(self, input_obj: Input12Features) -> np.ndarray:
+        data = self._prepare_data(input_obj, 12)
+        scaled = xgb_scaler.transform(data)
+        return xgb_model.predict(scaled)
+
+    # HDBSCAN (Usa Input7Features)
+    @bentoml.api
+    def cluster_hdbscan(self, input_obj: Input7Features) -> np.ndarray:
+        data = self._prepare_data(input_obj, 7)
+        scaled = hdb_scaler.transform(data)
+        scaled = hdb_model.predict(scaled)
+        return scaled
     
-class LogrScalerRunnable(Runnable):
-    # obligatorio para BentoML runner/strategy
-    SUPPORTED_RESOURCES = ("cpu",)
-    # indicar capacidades de concurrencia que BentoML consulta
-    SUPPORTS_CPU_MULTI_THREADING = True
-
-    def __init__(self):
-        print(f"Cargando el scaler desde el Model Store {LOGR_SCALER_TAG}...")
-        self.scaler = bentoml.picklable_model.load_model(LOGR_SCALER_TAG)
-        print("¡Scaler cargado!")
-
-    # @bentoml.runnable.method define una función que el runner puede llamar
-    @Runnable.method(batchable=True, batch_dim=0)
-    def transform(self, input_data: np.ndarray) -> np.ndarray:
-        return self.scaler.transform(input_data)
-    
-class SVMScalerRunnable(Runnable):
-    # obligatorio para BentoML runner/strategy
-    SUPPORTED_RESOURCES = ("cpu",)
-    # indicar capacidades de concurrencia que BentoML consulta
-    SUPPORTS_CPU_MULTI_THREADING = True
-
-    def __init__(self):
-        print(f"Cargando el scaler desde el Model Store {SVM_SCALER_TAG}...")
-        self.scaler = bentoml.picklable_model.load_model(SVM_SCALER_TAG)
-        print("¡Scaler cargado!")
-
-    # @bentoml.runnable.method define una función que el runner puede llamar
-    @Runnable.method(batchable=True, batch_dim=0)
-    def transform(self, input_data: np.ndarray) -> np.ndarray:
-        return self.scaler.transform(input_data)
-    
-class RFScalerRunnable(Runnable):
-    # obligatorio para BentoML runner/strategy
-    SUPPORTED_RESOURCES = ("cpu",)
-    # indicar capacidades de concurrencia que BentoML consulta
-    SUPPORTS_CPU_MULTI_THREADING = True
-
-    def __init__(self):
-        print(f"Cargando el scaler desde el Model Store {RF_SCALER_TAG}...")
-        self.scaler = bentoml.picklable_model.load_model(RF_SCALER_TAG)
-        print("¡Scaler cargado!")
-
-    # @bentoml.runnable.method define una función que el runner puede llamar
-    @Runnable.method(batchable=True, batch_dim=0)
-    def transform(self, input_data: np.ndarray) -> np.ndarray:
-        return self.scaler.transform(input_data)
-    
-class HDBSCANScalerRunnable(Runnable):
-    # obligatorio para BentoML runner/strategy
-    SUPPORTED_RESOURCES = ("cpu",)
-    # indicar capacidades de concurrencia que BentoML consulta
-    SUPPORTS_CPU_MULTI_THREADING = True
-
-    def __init__(self):
-        print(f"Cargando el scaler desde el Model Store {HDBSCAN_TAG}...")
-        self.scaler = bentoml.picklable_model.load_model(HDBSCAN_TAG)
-        print("¡Scaler cargado!")
-
-    # @bentoml.runnable.method define una función que el runner puede llamar
-    @Runnable.method(batchable=True, batch_dim=0)
-    def transform(self, input_data: np.ndarray) -> np.ndarray:
-        return self.scaler.transform(input_data)
-    
-# 3. Crear el scaler_runner a partir de nuestra CLASE personalizada
-# 3. Crear el scaler_runner a partir de nuestra CLASE personalizada
-xgb_scaler_runner  = bentoml.Runner(XGBScalerRunnable, name="xgb_scaler_runner")
-logr_scaler_runner = bentoml.Runner(LogrScalerRunnable, name="logr_scaler_runner")
-svm_scaler_runner  = bentoml.Runner(SVMScalerRunnable, name="svm_scaler_runner")
-rf_scaler_runner   = bentoml.Runner(RFScalerRunnable, name="rf_scaler_runner")
-hdbscan_scaler_runner = bentoml.Runner(HDBSCANScalerRunnable, name="hdbscan_scaler_runner")
-runners = [
-    xgb_runner, logr_runner, svm_runner, rf_runner, hdbscan_runner,
-    xgb_scaler_runner, logr_scaler_runner, svm_scaler_runner, rf_scaler_runner, hdbscan_scaler_runner
-]
-
-# Crear el servicio que incluirá el runner del modelo y el runner del scaler
-svc = bentoml.Service(
-    "ai4i2020__failure__prediction__service",
-    runners=runners,
-)
-
-FEATURES_12 = 12
-FEATURES_7  = 7
-
-sample_12 = [[298.1, 308.6, 1551, 42.8, 0, 0, 0, 0, 0, 0, 0, 1]]
-sample_7  = [[0.0] * FEATURES_7]
-
-@svc.api(input=NumpyNdarray.from_sample(sample_12), output=NumpyNdarray())
-async def predict_logreg(input_data: np.ndarray) -> np.ndarray:
-    scaled = await logr_scaler_runner.transform.async_run(input_data)
-    probs  = await logr_runner.predict.async_run(scaled)
-    return probs
-
-@svc.api(input=NumpyNdarray.from_sample(sample_7), output=NumpyNdarray())
-async def predict_random_forest(input_data: np.ndarray) -> np.ndarray:
-    scaled = await rf_scaler_runner.transform.async_run(input_data)
-    preds  = await rf_runner.predict.async_run(scaled)   # multioutput (5 columnas)
-    return preds
-
-@svc.api(input=NumpyNdarray.from_sample(sample_12), output=NumpyNdarray())
-async def predict_svm(input_data: np.ndarray) -> np.ndarray:
-    scaled = await svm_scaler_runner.transform.async_run(input_data)
-    probs  = await svm_runner.predict.async_run(scaled)
-    return probs
-
-@svc.api(input=NumpyNdarray.from_sample(sample_12), output=NumpyNdarray())
-async def predict_xgb(input_data: np.ndarray) -> np.ndarray:
-    scaled = await xgb_scaler_runner.transform.async_run(input_data)
-    preds  = await xgb_runner.predict.async_run(scaled)
-    return preds
-
-@svc.api(input=NumpyNdarray.from_sample(sample_7), output=NumpyNdarray())
-async def cluster_hdbscan(input_data: np.ndarray) -> np.ndarray:
-    scaled = await hdbscan_scaler_runner.transform.async_run(input_data)
-    labels = await hdbscan_runner.predict.async_run(scaled)  # o fit_predict según lo que guardaste
-    return labels
+# Comando a ejecutar en terminal para servir el servicio BentoML
+# bentoml serve service:AI4I2020FailurePredictionService --port 3000
