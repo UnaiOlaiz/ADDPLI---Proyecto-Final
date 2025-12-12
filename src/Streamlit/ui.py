@@ -23,10 +23,7 @@ def load_data():
 
 df = load_data()
 
-# ----------------------------------------------------
-# FUNCIÓN DE CONEXIÓN A LA API DE BENTOML (Puerto 3000)
-# ----------------------------------------------------
-
+# URL de donde estará escuchando nuestro servicio creado
 BENTO_URL_BASE = "http://localhost:3000"
 
 def call_bento_api(endpoint_name: str, input_features: list) -> dict:
@@ -206,9 +203,8 @@ if opcion == "Exploración de datos":
             st.dataframe(df.head())
         if st.checkbox("Mostrar estadísticas descriptivas"):
             st.dataframe(df.describe())
-# ------------------------------------
-# SECCIÓN 2: Predicciones (Integración con BentoML)
-# ------------------------------------
+
+# Pestaña de predicciones
 elif opcion == "Predicciones":
     st.header("Predicción de Fallos en Tiempo Real")
     st.markdown("Consulta la API de BentoML con nuevos parámetros. El servicio se ejecuta en http://localhost:3000.")
@@ -355,13 +351,11 @@ elif opcion == "Predicciones":
                 else:
                     st.json(result)
 
-# ----------------------------------------------------
-# SECCIÓN 3: Evaluación y Comparativa de Modelos
-# ----------------------------------------------------
+# Evaluación y comparación entre nuestros modelos
 st.header("Evaluación y Comparativa de Modelos")
 st.markdown("Análisis de las métricas clave y la justificación del mejor modelo para la predicción de fallos.")
 
-# --- 1. Tabla de Métricas de Clasificación Binaria (Fallo General) ---
+# 1. Tabla de Métricas de Clasificación Binaria (Fallo General)
 st.markdown("### 1. Métricas de Modelos de Clasificación Binaria")
 st.write("Métricas de los modelos que predicen 'Machine Failure' (Clase 0 o 1).")
 
@@ -393,7 +387,7 @@ Todos los modelos son excepcionalmente buenos, indicando que las features prepro
 Se elige *XGBoost* por su reconocida robustez en producción. El *Recall (0.9672)* es vital ya que minimiza los Falsos Negativos (fallos reales no detectados).
 """)
 
-# --- 2. Justificación y Visualizaciones del Mejor Modelo ---
+# 2. Justificación y Visualizaciones del Mejor Modelo
 mejor_modelo_nombre = "XGBoost" 
 st.markdown(f"### 2. Análisis del Mejor Modelo: *{mejor_modelo_nombre}*")
 
@@ -419,7 +413,7 @@ with col_roc:
     except Exception:
         st.warning("No se encontró la imagen 'img/xgb_rocauc.png'. Asegúrate de que está en la carpeta 'img'.")
 
-# --- 3. Evaluación de Random Forest (Clasificación de Fallos Específicos) ---
+# 3. Evaluación de Random Forest (Clasificación de Fallos Específicos) 
 st.markdown("### 3. Evaluación de Random Forest (Clasificación Multi-Etiqueta)")
 st.write("""
 El modelo Random Forest atiende a la pregunta *'Si hay un fallo, ¿cuál de los 5 tipos es?'*. Se evalúa con métricas ponderadas.

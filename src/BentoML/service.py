@@ -19,7 +19,7 @@ HDBSCAN_SCALER_TAG   = "ai4i2020_scaler_hdbscan:latest"
 class Input12Features(BaseModel):
     # Definimos que esperamos una lista de listas de floats
     input_data: list[list[float]] = Field(
-        default=[[298.9, 309.1, 2861, 4.6, 143, 0, 0, 1, 0, 0, 1, 0]],
+        default=[[298.9, 309.1, 2861, 4.6, 143, 0, 0, 1, 0, 0, 1, 0]], # Datos de predicción de prueba estándar
         description="Matriz de entrada con 12 características."
     )
 
