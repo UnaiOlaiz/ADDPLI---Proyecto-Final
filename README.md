@@ -2,15 +2,25 @@
 
 ## Estructura del Proyecto
 ```
-├── data (carpeta de datos)
-│   └── ai4i2020.csv (nuestro dataset)
-├── requirements.txt (fichero de dependencias)
-└── src (source)
-    ├── BentoML (rama de BentoML)
-    │   ├── service.ipynb (script del servicio)
-    │   └── train.ipynb (script de entrenamiento)
-    └── Streamlit (rama de Streamlit)
-        └── ui.ipynb (script de interfaz gráfica)
+── data
+│   ├── ai4i2020_cleaned.csv
+│   ├── ai4i2020.csv
+│   └── datos_para_demo.csv
+├── README.md
+├── requirements.txt
+└── src
+    ├── BentoML
+    │   ├── __pycache__
+    │   │   ├── service.cpython-313.pyc
+    │   │   └── service_v2.cpython-313.pyc
+    │   ├── service_notebook.ipynb
+    │   ├── service.py
+    │   └── train.ipynb
+    ├── Limpieza
+    │   └── cleaning.ipynb
+    └── Streamlit
+        ├── ui.ipynb
+        └── ui.py
 ```
 
 ## Instalación de dependencias
