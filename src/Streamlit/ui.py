@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import altair as alt
 import plotly.express as px
+import requests 
+import json
+import numpy as np
 
 # Configuración de la página
 st.set_page_config(
@@ -14,10 +17,37 @@ st.set_page_config(
 # Cargar datos
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/ai4i2020.csv")  
+    # Asegúrate de que esta ruta sea correcta para Streamlit
+    df = pd.read_csv("data/ai4i2020.csv") 
     return df
 
 df = load_data()
+
+# ----------------------------------------------------
+# FUNCIÓN DE CONEXIÓN A LA API DE BENTOML (Puerto 3000)
+# ----------------------------------------------------
+
+BENTO_URL_BASE = "http://localhost:3000"
+
+def call_bento_api(endpoint_name: str, input_features: list) -> dict:
+    """Llama al endpoint del modelo de BentoML con los datos de entrada."""
+    url = f"{BENTO_URL_BASE}/{endpoint_name}"
+    
+    # El esquema de Pydantic espera una lista de listas
+    data_to_send = {"input_data": [input_features]}
+
+    try:
+        response = requests.post(
+            url,
+            json=data_to_send,  
+            timeout=10
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    except requests.exceptions.RequestException as e:
+        # Esto capturará errores de conexión o errores HTTP
+        return {"error": f"Error al conectar con la API ({endpoint_name}): {e}"}
 
 # Columnas continuas y de fallos
 numeric_cols = ["Air temperature [K]", "Process temperature [K]", "Rotational speed [rpm]", "Torque [Nm]", "Tool wear [min]"]
@@ -33,14 +63,14 @@ opcion = st.sidebar.radio("Selecciona una sección:", ["Exploración de datos", 
 # Contenido principal
 st.title("Análisis y Predicción de Fallos ")
 st.markdown("""
-Este panel utiliza el dataset **WAI4I 2020**, que contiene datos de sensores de máquinas industriales para analizar y predecir fallos.  
+Este panel utiliza el dataset *WAI4I 2020*, que contiene datos de sensores de máquinas industriales para analizar y predecir fallos.  
 Incluye variables como temperatura del aire y del proceso, velocidad de rotación, torque y desgaste de la herramienta, así como registros de distintos tipos de fallos:  
 
-- **TWF:** Desgaste de herramienta  
-- **HDF:** Disipación de calor  
-- **PWF:** Potencia fuera de rango  
-- **OSF:** Sobreesfuerzo mecánico  
-- **RNF:** Falla aleatoria  
+- *TWF:* Desgaste de herramienta  
+- *HDF:* Disipación de calor  
+- *PWF:* Potencia fuera de rango  
+- *OSF:* Sobreesfuerzo mecánico  
+- *RNF:* Falla aleatoria  
 
 Cada registro corresponde a una máquina en un momento determinado. Con esta información podemos explorar patrones, estudiar relaciones entre variables y desarrollar modelos de mantenimiento predictivo.
 """)
@@ -65,8 +95,6 @@ if opcion == "Exploración de datos":
 
     st.markdown("---")
 
-    
-
     # Crear columnas para gráficos lado a lado
     col1, col2 = st.columns(2)
 
@@ -87,8 +115,6 @@ if opcion == "Exploración de datos":
             tooltip=["label:N", "Cantidad:Q"]
         )
         st.altair_chart(chart, use_container_width=True)
-
-       
 
     # Gráfico interactivo: fallos vs variable seleccionada en col2
     # Gráfico interactivo mejorado: fallos vs variable seleccionada en col2
@@ -149,13 +175,12 @@ if opcion == "Exploración de datos":
 
         st.altair_chart(line_fail)
         
-
     # Histogramas en col4
     with col4:
         st.subheader("Matriz de co-ocurrencia de fallos")
         co_occur = df[fallos_cols].T.dot(df[fallos_cols])
         fig = px.imshow(co_occur, text_auto=True, color_continuous_scale='Blues', width=1000, height=600)
-        fig.update_xaxes(side="top")  
+        fig.update_xaxes(side="top") 
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown("---")
@@ -171,7 +196,7 @@ if opcion == "Exploración de datos":
         st.write("Selecciona la variable para ver su histograma")
         selected_numeric = st.selectbox("Variable:", numeric_cols)
         
-        fig, ax = plt.subplots(figsize=(5,4))  
+        fig, ax = plt.subplots(figsize=(5,4)) 
         sns.histplot(df[selected_numeric], kde=True, bins=30, color="#4CAF50")
         ax.set_title(selected_numeric)
         st.pyplot(fig)
@@ -181,25 +206,237 @@ if opcion == "Exploración de datos":
             st.dataframe(df.head())
         if st.checkbox("Mostrar estadísticas descriptivas"):
             st.dataframe(df.describe())
-        
-
-
-
-
-   
-    
-
-    
-    
-
-
-  
-
-
-    
 # ------------------------------------
-# SECCIÓN 2: Predicciones
+# SECCIÓN 2: Predicciones (Integración con BentoML)
 # ------------------------------------
 elif opcion == "Predicciones":
-    st.header("📈 Predicciones")
-    st.write("Aquí se implementará el modelo y su interfaz para hacer predicciones con nuevos datos.")
+    st.header("Predicción de Fallos en Tiempo Real")
+    st.markdown("Consulta la API de BentoML con nuevos parámetros. El servicio se ejecuta en http://localhost:3000.")
+
+    # 1. Selector de Modelo y su endpoint 
+    MODEL_ENDPOINTS = {
+        "XGBoost (12 Features)": "predict_xgb", 
+        "Regresión Logística (12 Features)": "predict_logreg",
+        "SVM (12 Features)": "predict_svm",
+        "Random Forest (7 Features)": "predict_random_forest", 
+        "HDBSCAN (7 Features)": "cluster_hdbscan",
+    }
+    selected_model_display = st.selectbox(
+        "Modelo a utilizar:", 
+        list(MODEL_ENDPOINTS.keys())
+    )
+    endpoint_to_call = MODEL_ENDPOINTS[selected_model_display]
+    
+    # Determinamos cuántas columnas necesitamos
+    required_cols = 12 if "12 Features" in selected_model_display else 7
+
+    st.subheader(f"Ingreso de Parámetros ({required_cols} Features Requeridas)")
+    
+    # Creamos un formulario para garantizar que los datos se envíen juntos
+    with st.form("prediction_form"):
+        col_t1, col_t2 = st.columns(2)
+
+        # INPUTS Continuos
+        with col_t1:
+            st.markdown("*Variables Continuas:*")
+            temp_aire = st.number_input("Air temperature [K]", value=299.1, step=0.1)
+            temp_proceso = st.number_input("Process temperature [K]", value=309.2, step=0.1)
+            velocidad = st.number_input("Rotational speed [rpm]", value=1530, step=1)
+            torque = st.number_input("Torque [Nm]", value=40.1, step=0.1)
+            desgaste = st.number_input("Tool wear [min]", value=100, step=1)
+        
+        # INPUTS Dummies
+        with col_t2:
+            st.markdown("*Tipo de Máquina:*")
+            machine_type = st.radio("Selecciona Tipo:", ('L', 'M', 'H'), index=0, key="machine_type_radio")
+            
+            type_L = 1 if machine_type == 'L' else 0
+            type_M = 1 if machine_type == 'M' else 0
+
+            # Inicializamos fallos
+            twf, hdf, pwf, osf, rnf = 0, 0, 0, 0, 0
+            
+            if required_cols == 12:
+                st.markdown("*Fallos Históricos (5 Dummies):*")
+                twf = st.checkbox("TWF (Tool Wear Failure)", value=False)
+                hdf = st.checkbox("HDF (Heat Dissipation Failure)", value=False)
+                pwf = st.checkbox("PWF (Power Failure)", value=False)
+                osf = st.checkbox("OSF (Overstrain Failure)", value=False)
+                rnf = st.checkbox("RNF (Random Failure)", value=False)
+            else:
+                st.info("El modelo de 7 Features solo utiliza las variables continuas y el tipo de máquina (L, M).")
+        
+        submitted = st.form_submit_button("Obtener Predicción")
+        
+        if submitted:
+            st.warning("Verificando el orden de las features...")
+
+            if required_cols == 12:
+                input_features = [
+                    type_L, type_M,
+                    temp_aire, temp_proceso, velocidad, torque, desgaste,
+                    int(twf), int(hdf), int(pwf), int(osf), int(rnf),
+                ]
+            else:
+                input_features = [
+                    temp_aire, temp_proceso, velocidad, torque, desgaste,
+                    type_L, type_M
+                ]
+            
+            # Función para llamar a la API con payload completo (input_obj)
+            def call_bento_api_raw(endpoint_name: str, payload: dict) -> dict:
+                url = f"{BENTO_URL_BASE}/{endpoint_name}"
+                try:
+                    response = requests.post(
+                        url,
+                        json=payload,
+                        timeout=10
+                    )
+                    response.raise_for_status()
+                    return response.json()
+                except Exception as e:
+                    return {"error": str(e)}
+
+            # Preparar payload en el formato que espera BentoML
+            payload = {
+                "input_obj": {
+                    "input_data": [input_features]
+                }
+            }
+
+            st.info(f"Conectando con la API y usando el modelo: *{selected_model_display}*...")
+            result = call_bento_api_raw(endpoint_to_call, payload)
+            
+            # Mostrar resultados
+            if "error" in result:
+                st.error(f"Fallo en la conexión o la API: {result['error']}")
+                st.code(f"Error de la API: {result['error']}")
+            else:
+                pred_array = np.array(result)
+                
+                st.subheader("Resultado de la Predicción:")
+
+                if "cluster" in endpoint_to_call or pred_array.shape[-1] == 1:
+                    prediction = int(pred_array.flatten()[0])
+                    label = "Cluster Asignado" if "cluster" in endpoint_to_call else "Clase Predicha (0=Normal, 1=Fallo)"
+                    st.metric(label=label, value=prediction)
+                    
+                    if prediction == 1:
+                        st.error("*ALERTA: FALLO PREVISTO* (Clase 1)")
+                    elif prediction == 0:
+                        st.success("*Operación Normal* (Clase 0)")
+                    elif prediction == -1 and "cluster" in endpoint_to_call:
+                        st.warning("Patrón Atípico (Ruido -1).")
+
+                elif pred_array.shape[-1] == 2:
+                    prob_fail = float(pred_array.flatten()[1])
+                    st.metric("Probabilidad de Fallo (Clase 1)", f"{prob_fail:.2%}")
+
+                    if prob_fail > 0.5:
+                        st.error("*ALERTA: FALLO PREVISTO* (Probabilidad > 50%)")
+                    else:
+                        st.success("Operación Normal (Probabilidad <= 50%)")
+
+                elif "random_forest" in endpoint_to_call:
+                    st.markdown("##### Resultados Multi-Etiqueta (Random Forest)")
+                    
+                    fallo_predicho = pred_array[0]
+                    fallos_cols_rf = ["TWF","HDF","PWF","OSF","RNF"] 
+                    
+                    fallos_df_pred = pd.DataFrame([fallo_predicho], columns=fallos_cols_rf)
+
+                    if fallos_df_pred.sum(axis=1).iloc[0] == 0:
+                        st.success("*Predicción: Ningún fallo específico*")
+                    else:
+                        st.error("*Fallo(s) detectado(s)*")
+                        fallos_activos = fallos_df_pred.columns[fallos_df_pred.iloc[0] == 1].tolist()
+                        st.code(f"Tipos de fallo predichos: {', '.join(fallos_activos)}")
+
+                else:
+                    st.json(result)
+
+# ----------------------------------------------------
+# SECCIÓN 3: Evaluación y Comparativa de Modelos
+# ----------------------------------------------------
+st.header("Evaluación y Comparativa de Modelos")
+st.markdown("Análisis de las métricas clave y la justificación del mejor modelo para la predicción de fallos.")
+
+# --- 1. Tabla de Métricas de Clasificación Binaria (Fallo General) ---
+st.markdown("### 1. Métricas de Modelos de Clasificación Binaria")
+st.write("Métricas de los modelos que predicen 'Machine Failure' (Clase 0 o 1).")
+
+# Datos REALES (Extraídos del notebook)
+data_clasificacion = {
+    'Modelo': ["XGBoost", "Regresión Logística", "SVM"],
+    'Accuracy': [0.9990, 0.9990, 0.9990],
+    'Precision': [1.0000, 1.0000, 1.0000], 
+    'Recall': [0.9672, 0.9672, 0.9672],
+    'F1 Score': [0.9833, 0.9833, 0.9833],
+    'AUC (ROC)': [0.9990, 0.9990, 0.9990]
+}
+
+df_metricas = pd.DataFrame(data_clasificacion)
+
+# Resaltar la mejor métrica en cada columna
+st.dataframe(
+    df_metricas.style.highlight_max(
+        subset=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC (ROC)'], 
+        axis=0, 
+        props='font-weight: bold; background-color: #d8f5d8;'
+    ).format(precision=4), 
+    use_container_width=True
+)
+
+st.info("""
+*Conclusión sobre la Predicción Binaria:*
+Todos los modelos son excepcionalmente buenos, indicando que las features preprocesadas son muy predictivas. 
+Se elige *XGBoost* por su reconocida robustez en producción. El *Recall (0.9672)* es vital ya que minimiza los Falsos Negativos (fallos reales no detectados).
+""")
+
+# --- 2. Justificación y Visualizaciones del Mejor Modelo ---
+mejor_modelo_nombre = "XGBoost" 
+st.markdown(f"### 2. Análisis del Mejor Modelo: *{mejor_modelo_nombre}*")
+
+col_conf, col_roc = st.columns(2)
+
+with col_conf:
+    st.markdown("#### Matriz de Confusión")
+    st.write(f"Distribución de True/False Positives/Negatives para {mejor_modelo_nombre}.")
+    
+
+    try:
+        st.image("img/xgb_confusion.png", caption=f"Matriz de Confusión de {mejor_modelo_nombre}") 
+    except Exception:
+        st.warning("No se encontró la imagen 'img/xgb_confusion.png'. Asegúrate de que está en la carpeta 'img'.")
+        
+with col_roc:
+    st.markdown("#### Curva ROC y Área bajo la Curva (AUC)")
+    st.write(f"El valor de AUC de {data_clasificacion['AUC (ROC)'][0]:.4f} confirma su alta capacidad discriminatoria.")
+    
+   
+    try:
+        st.image("img/xgb_rocauc.png", caption="Curva ROC de XGBoost") 
+    except Exception:
+        st.warning("No se encontró la imagen 'img/xgb_rocauc.png'. Asegúrate de que está en la carpeta 'img'.")
+
+# --- 3. Evaluación de Random Forest (Clasificación de Fallos Específicos) ---
+st.markdown("### 3. Evaluación de Random Forest (Clasificación Multi-Etiqueta)")
+st.write("""
+El modelo Random Forest atiende a la pregunta *'Si hay un fallo, ¿cuál de los 5 tipos es?'*. Se evalúa con métricas ponderadas.
+""")
+
+# Datos REALES 
+rf_accuracy = 0.9800
+rf_precision = 0.6979
+rf_recall = 0.4722
+rf_f1 = 0.5523
+
+col_rf1, col_rf2, col_rf3 = st.columns(3)
+col_rf1.metric(label="Accuracy Total (RF)", value=f"{rf_accuracy:.2%}")
+col_rf2.metric(label="Precision Ponderada (RF)", value=f"{rf_precision:.2%}")
+col_rf3.metric(label="Recall Ponderado (RF)", value=f"{rf_recall:.2%}")
+
+st.warning(f"""
+*Análisis del Random Forest:*
+El *Recall Ponderado ({rf_recall:.2%})* es bajo, lo que indica que el modelo tiene dificultades para identificar correctamente los tipos de fallos específicos. Este modelo debe usarse solo para clasificar el tipo después de que un modelo binario (XGBoost) haya predicho que ocurrirá una falla.
+""")
