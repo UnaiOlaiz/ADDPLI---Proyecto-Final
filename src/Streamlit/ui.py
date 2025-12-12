@@ -351,86 +351,86 @@ elif opcion == "Predicciones":
                 else:
                     st.json(result)
 
-# Evaluación y comparación entre nuestros modelos
-st.header("Evaluación y Comparativa de Modelos")
-st.markdown("Análisis de las métricas clave y la justificación del mejor modelo para la predicción de fallos.")
+    # Evaluación y comparación entre nuestros modelos
+    st.header("Evaluación y Comparativa de Modelos")
+    st.markdown("Análisis de las métricas clave y la justificación del mejor modelo para la predicción de fallos.")
 
-# 1. Tabla de Métricas de Clasificación Binaria (Fallo General)
-st.markdown("### 1. Métricas de Modelos de Clasificación Binaria")
-st.write("Métricas de los modelos que predicen 'Machine Failure' (Clase 0 o 1).")
+    # 1. Tabla de Métricas de Clasificación Binaria (Fallo General)
+    st.markdown("### 1. Métricas de Modelos de Clasificación Binaria")
+    st.write("Métricas de los modelos que predicen 'Machine Failure' (Clase 0 o 1).")
 
-# Datos REALES (Extraídos del notebook)
-data_clasificacion = {
-    'Modelo': ["XGBoost", "Regresión Logística", "SVM"],
-    'Accuracy': [0.9990, 0.9990, 0.9990],
-    'Precision': [1.0000, 1.0000, 1.0000], 
-    'Recall': [0.9672, 0.9672, 0.9672],
-    'F1 Score': [0.9833, 0.9833, 0.9833],
-    'AUC (ROC)': [0.9990, 0.9990, 0.9990]
-}
+    # Datos REALES (Extraídos del notebook)
+    data_clasificacion = {
+        'Modelo': ["XGBoost", "Regresión Logística", "SVM"],
+        'Accuracy': [0.9990, 0.9990, 0.9990],
+        'Precision': [1.0000, 1.0000, 1.0000], 
+        'Recall': [0.9672, 0.9672, 0.9672],
+        'F1 Score': [0.9833, 0.9833, 0.9833],
+        'AUC (ROC)': [0.9990, 0.9990, 0.9990]
+    }
 
-df_metricas = pd.DataFrame(data_clasificacion)
+    df_metricas = pd.DataFrame(data_clasificacion)
 
-# Resaltar la mejor métrica en cada columna
-st.dataframe(
-    df_metricas.style.highlight_max(
-        subset=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC (ROC)'], 
-        axis=0, 
-        props='font-weight: bold; background-color: #d8f5d8;'
-    ).format(precision=4), 
-    use_container_width=True
-)
+    # Resaltar la mejor métrica en cada columna
+    st.dataframe(
+        df_metricas.style.highlight_max(
+            subset=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC (ROC)'], 
+            axis=0, 
+            props='font-weight: bold; background-color: #d8f5d8;'
+        ).format(precision=4), 
+        use_container_width=True
+    )
 
-st.info("""
-*Conclusión sobre la Predicción Binaria:*
-Todos los modelos son excepcionalmente buenos, indicando que las features preprocesadas son muy predictivas. 
-Se elige *XGBoost* por su reconocida robustez en producción. El *Recall (0.9672)* es vital ya que minimiza los Falsos Negativos (fallos reales no detectados).
-""")
+    st.info("""
+    *Conclusión sobre la Predicción Binaria:*
+    Todos los modelos son excepcionalmente buenos, indicando que las features preprocesadas son muy predictivas. 
+    Se elige *XGBoost* por su reconocida robustez en producción. El *Recall (0.9672)* es vital ya que minimiza los Falsos Negativos (fallos reales no detectados).
+    """)
 
-# 2. Justificación y Visualizaciones del Mejor Modelo
-mejor_modelo_nombre = "XGBoost" 
-st.markdown(f"### 2. Análisis del Mejor Modelo: *{mejor_modelo_nombre}*")
+    # 2. Justificación y Visualizaciones del Mejor Modelo
+    mejor_modelo_nombre = "XGBoost" 
+    st.markdown(f"### 2. Análisis del Mejor Modelo: *{mejor_modelo_nombre}*")
 
-col_conf, col_roc = st.columns(2)
+    col_conf, col_roc = st.columns(2)
 
-with col_conf:
-    st.markdown("#### Matriz de Confusión")
-    st.write(f"Distribución de True/False Positives/Negatives para {mejor_modelo_nombre}.")
-    
-
-    try:
-        st.image("img/xgb_confusion.png", caption=f"Matriz de Confusión de {mejor_modelo_nombre}") 
-    except Exception:
-        st.warning("No se encontró la imagen 'img/xgb_confusion.png'. Asegúrate de que está en la carpeta 'img'.")
+    with col_conf:
+        st.markdown("#### Matriz de Confusión")
+        st.write(f"Distribución de True/False Positives/Negatives para {mejor_modelo_nombre}.")
         
-with col_roc:
-    st.markdown("#### Curva ROC y Área bajo la Curva (AUC)")
-    st.write(f"El valor de AUC de {data_clasificacion['AUC (ROC)'][0]:.4f} confirma su alta capacidad discriminatoria.")
+
+        try:
+            st.image("img/xgb_confusion.png", caption=f"Matriz de Confusión de {mejor_modelo_nombre}") 
+        except Exception:
+            st.warning("No se encontró la imagen 'img/xgb_confusion.png'. Asegúrate de que está en la carpeta 'img'.")
+            
+    with col_roc:
+        st.markdown("#### Curva ROC y Área bajo la Curva (AUC)")
+        st.write(f"El valor de AUC de {data_clasificacion['AUC (ROC)'][0]:.4f} confirma su alta capacidad discriminatoria.")
+        
     
-   
-    try:
-        st.image("img/xgb_rocauc.png", caption="Curva ROC de XGBoost") 
-    except Exception:
-        st.warning("No se encontró la imagen 'img/xgb_rocauc.png'. Asegúrate de que está en la carpeta 'img'.")
+        try:
+            st.image("img/xgb_rocauc.png", caption="Curva ROC de XGBoost") 
+        except Exception:
+            st.warning("No se encontró la imagen 'img/xgb_rocauc.png'. Asegúrate de que está en la carpeta 'img'.")
 
-# 3. Evaluación de Random Forest (Clasificación de Fallos Específicos) 
-st.markdown("### 3. Evaluación de Random Forest (Clasificación Multi-Etiqueta)")
-st.write("""
-El modelo Random Forest atiende a la pregunta *'Si hay un fallo, ¿cuál de los 5 tipos es?'*. Se evalúa con métricas ponderadas.
-""")
+    # 3. Evaluación de Random Forest (Clasificación de Fallos Específicos) 
+    st.markdown("### 3. Evaluación de Random Forest (Clasificación Multi-Etiqueta)")
+    st.write("""
+    El modelo Random Forest atiende a la pregunta *'Si hay un fallo, ¿cuál de los 5 tipos es?'*. Se evalúa con métricas ponderadas.
+    """)
 
-# Datos REALES 
-rf_accuracy = 0.9800
-rf_precision = 0.6979
-rf_recall = 0.4722
-rf_f1 = 0.5523
+    # Datos REALES 
+    rf_accuracy = 0.9800
+    rf_precision = 0.6979
+    rf_recall = 0.4722
+    rf_f1 = 0.5523
 
-col_rf1, col_rf2, col_rf3 = st.columns(3)
-col_rf1.metric(label="Accuracy Total (RF)", value=f"{rf_accuracy:.2%}")
-col_rf2.metric(label="Precision Ponderada (RF)", value=f"{rf_precision:.2%}")
-col_rf3.metric(label="Recall Ponderado (RF)", value=f"{rf_recall:.2%}")
+    col_rf1, col_rf2, col_rf3 = st.columns(3)
+    col_rf1.metric(label="Accuracy Total (RF)", value=f"{rf_accuracy:.2%}")
+    col_rf2.metric(label="Precision Ponderada (RF)", value=f"{rf_precision:.2%}")
+    col_rf3.metric(label="Recall Ponderado (RF)", value=f"{rf_recall:.2%}")
 
-st.warning(f"""
-*Análisis del Random Forest:*
-El *Recall Ponderado ({rf_recall:.2%})* es bajo, lo que indica que el modelo tiene dificultades para identificar correctamente los tipos de fallos específicos. Este modelo debe usarse solo para clasificar el tipo después de que un modelo binario (XGBoost) haya predicho que ocurrirá una falla.
-""")
+    st.warning(f"""
+    *Análisis del Random Forest:*
+    El *Recall Ponderado ({rf_recall:.2%})* es bajo, lo que indica que el modelo tiene dificultades para identificar correctamente los tipos de fallos específicos. Este modelo debe usarse solo para clasificar el tipo después de que un modelo binario (XGBoost) haya predicho que ocurrirá una falla.
+    """)
