@@ -155,7 +155,7 @@ if opcion == "Exploración de datos":
 
     # Gráfico interactivo: fallos vs variable seleccionada en col2
     with col2:
-        st.subheader("Cantidad de fallos por tipo de producto (H-L-M)")
+        st.subheader("Cantidad de fallos por tipo de producto")
         df["Type"] = df["Type"]
         fail_long = (
             df.groupby(["Type"])[fallos_cols]
