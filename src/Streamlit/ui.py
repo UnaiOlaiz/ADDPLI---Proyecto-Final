@@ -80,17 +80,57 @@ if opcion == "Exploración de datos":
 
     # KPIs generales
     st.subheader("KPIs Generales")
-    total_fallos = df[fallos_cols].sum().sum()
-    tipo_mas_frecuente = df[fallos_cols].sum().idxmax()
-    cantidad_mas_frecuente = df[fallos_cols].sum().max()
-    num_maquinas_fallo = df[df[fallos_cols].sum(axis=1) > 0]["Product ID"].nunique()
-    
-    kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Total de fallos", f"{total_fallos}")
-    kpi2.metric("Tipo de fallo más frecuente", f"{tipo_mas_frecuente} ({cantidad_mas_frecuente})")
-    kpi3.metric("Máquinas con al menos un fallo", f"{num_maquinas_fallo}")
+
+    # KPI 1 – Total de eventos de fallo 
+    total_eventos_fallo = df[fallos_cols].sum().sum()
+    # KPI 2 – Tipo de fallo más frecuente
+    fallos_por_tipo = df[fallos_cols].sum()
+    tipo_fallo_frecuente = fallos_por_tipo.idxmax()
+    cantidad_fallo_frecuente = fallos_por_tipo.max()
+    # KPI 3 – Porcentaje de observaciones con fallo
+    total_registros = len(df)
+    registros_con_fallo = (df["Machine failure"] == 1).sum()
+    porcentaje_fallo = registros_con_fallo / total_registros * 100
+    # KPI 4 – Desgaste medio de herramienta cuando ocurre fallo
+    tool_wear_fallo = df[df["Machine failure"] == 1]["Tool wear [min]"].mean()
+    # KPI 5 - Tipo de producto más riesgoso
+    fallos_por_tipo_prod = (
+    df.groupby("Type")["Machine failure"]
+    .mean() * 100
+    )
+    tipo_maquina_riesgo = fallos_por_tipo_prod.idxmax()
+    riesgo_tipo_producto = fallos_por_tipo_prod.max()
+
+
+    k1, k2, k3, k4, k5 = st.columns(5)
+
+    k1.metric(
+        "Eventos totales de fallo",
+        f"{int(total_eventos_fallo)}"
+    )
+
+    k2.metric(
+        "Fallo más frecuente",
+        f"{tipo_fallo_frecuente} ({int(cantidad_fallo_frecuente)})"
+    )
+
+    k3.metric(
+        "% Registros con fallo",
+        f"{porcentaje_fallo:.2f}%"
+    )
+
+    k4.metric(
+    "Tool wear medio al fallo",
+    f"{tool_wear_fallo:.1f} min"
+    )
+
+    k5.metric(
+    "Tipo de producto más riesgoso",
+    f"{tipo_maquina_riesgo} ({riesgo_tipo_producto:.2f}%)"
+    )
 
     st.markdown("---")
+
 
     # Crear columnas para gráficos lado a lado
     col1, col2 = st.columns(2)
@@ -116,19 +156,19 @@ if opcion == "Exploración de datos":
     # Gráfico interactivo: fallos vs variable seleccionada en col2
     # Gráfico interactivo mejorado: fallos vs variable seleccionada en col2
     with col2:
-        st.subheader("Cantidad de fallos por tipo de máquina")
-        df["MachineType"] = df["Product ID"].str[0]
+        st.subheader("Cantidad de fallos por tipo de producto (H-L-M)")
+        df["Type"] = df["Type"]
         fail_long = (
-            df.groupby(["MachineType"])[fallos_cols]
+            df.groupby(["Type"])[fallos_cols]
             .sum()
             .reset_index()
-            .melt(id_vars="MachineType", var_name="Tipo de fallo", value_name="Cantidad")
+            .melt(id_vars="Type", var_name="Tipo de fallo", value_name="Cantidad")
         )
 
-        # Filtro por máquina
-        selected_machine = st.selectbox("Filtra por tipo de máquina:", ["Todas"] + sorted(df["MachineType"].unique()))
-        if selected_machine != "Todas":
-            fail_filtered = fail_long[fail_long["MachineType"] == selected_machine]
+        # Filtro por producto
+        selected_prod = st.selectbox("Filtra por tipo de producto:", ["Todas"] + sorted(df["Type"].unique()))
+        if selected_prod != "Todas":
+            fail_filtered = fail_long[fail_long["Type"] == selected_prod]
         else:
             fail_filtered = fail_long
 
