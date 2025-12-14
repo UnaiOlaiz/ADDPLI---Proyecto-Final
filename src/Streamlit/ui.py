@@ -415,7 +415,7 @@ elif opcion == "Predicciones":
         df_metricas.style.highlight_max(
             subset=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC (ROC)'], 
             axis=0, 
-            props='font-weight: bold; background-color: #d8f5d8;'
+            props='font-weight: bold; background-color: #d8f5d8; color: #000000;'
         ).format(precision=4), 
         use_container_width=True
     )
