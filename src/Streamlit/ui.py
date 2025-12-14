@@ -224,9 +224,9 @@ if opcion == "Exploración de datos":
     with st.expander("Correlación de variables continuas"):
         st.write("Heatmap de correlaciones entre variables numéricas")
         corr = df[numeric_cols].corr()
-        fig, ax = plt.subplots(figsize=(6,5))
+        fig, ax = plt.subplots(figsize=(5,4))
         sns.heatmap(corr, annot=True, cmap="coolwarm", ax=ax)
-        st.pyplot(fig)
+        st.pyplot(fig, use_container_width=False)
 
     with st.expander("Distribución de variables continuas"):
         st.write("Selecciona la variable para ver su histograma")
@@ -235,7 +235,7 @@ if opcion == "Exploración de datos":
         fig, ax = plt.subplots(figsize=(5,4)) 
         sns.histplot(df[selected_numeric], kde=True, bins=30, color="#4CAF50")
         ax.set_title(selected_numeric)
-        st.pyplot(fig)
+        st.pyplot(fig, use_container_width=False)
         
     with st.expander("Datos y estadísticas"):
         if st.checkbox("Mostrar tabla de datos"):
