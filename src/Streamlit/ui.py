@@ -154,7 +154,6 @@ if opcion == "Exploración de datos":
         st.altair_chart(chart, use_container_width=True)
 
     # Gráfico interactivo: fallos vs variable seleccionada en col2
-    # Gráfico interactivo mejorado: fallos vs variable seleccionada en col2
     with col2:
         st.subheader("Cantidad de fallos por tipo de producto (H-L-M)")
         df["Type"] = df["Type"]
