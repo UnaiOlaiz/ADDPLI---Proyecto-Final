@@ -280,7 +280,10 @@ elif opcion == "Predicciones":
     endpoint_to_call = MODEL_ENDPOINTS[selected_model_display]
     
     # Columnas necesareas
-    required_cols = 12 if "12 Features" in selected_model_display else 7
+    if endpoint_to_call in ["predict_xgb", "predict_logreg", "predict_svm"]:
+        required_cols = 12
+    else:
+        required_cols = 7
 
     st.subheader(f"Ingreso de Parámetros ({required_cols} Features Requeridas)")
     
@@ -325,10 +328,20 @@ elif opcion == "Predicciones":
 
             if required_cols == 12:
                 input_features = [
-                    type_L, type_M,
-                    temp_aire, temp_proceso, velocidad, torque, desgaste,
-                    int(twf), int(hdf), int(pwf), int(osf), int(rnf),
+                    temp_aire,
+                    temp_proceso,
+                    velocidad,
+                    torque,
+                    desgaste,
+                    int(twf),
+                    int(hdf),
+                    int(pwf),
+                    int(osf),
+                    int(rnf),
+                    type_L,
+                    type_M,
                 ]
+
             else:
                 input_features = [
                     temp_aire, temp_proceso, velocidad, torque, desgaste,
