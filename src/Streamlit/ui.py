@@ -60,17 +60,34 @@ opcion = st.sidebar.radio("Selecciona una sección:", ["Exploración de datos", 
 # Contenido principal
 st.title("Análisis y Predicción de Fallos ")
 st.markdown("""
-Este panel utiliza el dataset *WAI4I 2020*, que contiene datos de sensores de máquinas industriales para analizar y predecir fallos.  
-Incluye variables como temperatura del aire y del proceso, velocidad de rotación, torque y desgaste de la herramienta, así como registros de distintos tipos de fallos:  
+Este panel utiliza el dataset `WAI4I 2020`, que contiene datos de sensores de máquinas industriales para analizar y predecir fallos en un entorno controlado y sintético. Incluye variables como temperatura del aire y del proceso, velocidad de rotación, torque y desgaste de la herramienta, ... entre otros.
+            
+Nuestro objetivo va a ser anticiparnos, mediante modelos de `ML`, a posibles fallos que puedan llegar a sufrir estos procesos maquinarios. Nuestro conjunto de datos cuenta con la variable de `Machine Failure`, la cual indicará si el procesamiento de el producto a instanciar ha resultado en fallo o no. Por otra parte, los fallos maquinarios se descomponen en diferentes tipos, debido a que pueden llegar a haber sido producido por ciertos factores externos. Los cuales son los siguientes: 
 
-- *TWF:* Desgaste de herramienta  
-- *HDF:* Disipación de calor  
-- *PWF:* Potencia fuera de rango  
-- *OSF:* Sobreesfuerzo mecánico  
-- *RNF:* Falla aleatoria  
+- `TWF:` Desgaste de herramienta  
+- `HDF:` Disipación de calor  
+- `PWF:` Potencia fuera de rango  
+- `OSF:` Sobreesfuerzo mecánico  
+- `RNF:` Falla aleatoria  
 
-Cada registro corresponde a una máquina en un momento determinado. Con esta información podemos explorar patrones, estudiar relaciones entre variables y desarrollar modelos de mantenimiento predictivo.
+Cada registro corresponde a una manufacturación de un producto en un momento determinado. Con esta información podemos explorar patrones, estudiar relaciones entre variables y desarrollar modelos de mantenimiento predictivo.
 """)
+
+st.markdown("---")
+
+st.markdown("""            
+Esta aplicación `Streamlit` contará, además, de la posibilidad de desplegar y utilizar los modelos anteriormente creados y entrenados en la plataforma `BentoML`. Cada algoritmo empleado buscará especializarse en una tarea en específico, y requerirá de diferentes variables para poder llegar a realizar ejecuciones exitosas. A continuación, alistaremos los modelos que serán accesible en la pestaña de `Predicciones`:
+            
+Modelos disponibles:
+- `Logistic Regresión:` Algoritmo de aprendizaje supervisado de tipo regresivo para predecir si el proceso de manufacturación resultará en fallo o no. 
+- `Random Forest:` Algoritmo clasificatorio para predecir el tipo de fallo (en el caso de que haya habido) entre los diferentes tipos mencionados anteriormente. 
+- `SVMs (Support Vector Machines):` Algoritmo supervisado que buscará clasificar en un espacio vectorial, las instancias que hayan resultado en falla y no.
+- `XGBoostClassifier:` Algoritmo el cual comparte objetivo con la *Regresión Logística*, pero la cual mediante diferentes capas de árboles estructurados, buscará una más consolidada predicción.   
+- `HDBSCAN:` Algoritmo de aprendizaje no supervisado que intentará agrupar las instancias más similares entre sí, formando agrupaciones las cuales permitirán analizar patrones significativos.
+                
+""")
+
+st.markdown("---")
 
 # Exploración de datos
 if opcion == "Exploración de datos":
