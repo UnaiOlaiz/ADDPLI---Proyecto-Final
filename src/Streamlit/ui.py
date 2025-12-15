@@ -299,7 +299,7 @@ elif opcion == "Predicciones":
         
         # INPUTS Dummies
         with col_t2:
-            st.markdown("*Tipo de Máquina:*")
+            st.markdown("*Tipo de Producto:*")
             machine_type = st.radio("Selecciona Tipo:", ('L', 'M', 'H'), index=0, key="machine_type_radio")
             
             type_L = 1 if machine_type == 'L' else 0
