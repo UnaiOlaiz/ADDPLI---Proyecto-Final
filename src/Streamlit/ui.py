@@ -204,7 +204,7 @@ if opcion == "Exploración de datos":
 
     st.markdown("---")
 
-    # Aqui se pueden hacer mas columnas
+    
     col3, col4 = st.columns(2)
 
     # Boxplots en col3
@@ -279,12 +279,12 @@ elif opcion == "Predicciones":
     )
     endpoint_to_call = MODEL_ENDPOINTS[selected_model_display]
     
-    # Determinamos cuántas columnas necesitamos
+    # Columnas necesareas
     required_cols = 12 if "12 Features" in selected_model_display else 7
 
     st.subheader(f"Ingreso de Parámetros ({required_cols} Features Requeridas)")
     
-    # Creamos un formulario para garantizar que los datos se envíen juntos
+    # Creacion delformulario para garantizar que los datos se envíen juntos
     with st.form("prediction_form"):
         col_t1, col_t2 = st.columns(2)
 
@@ -305,7 +305,7 @@ elif opcion == "Predicciones":
             type_L = 1 if machine_type == 'L' else 0
             type_M = 1 if machine_type == 'M' else 0
 
-            # Inicializamos fallos
+            # Inicializaión de los fallos
             twf, hdf, pwf, osf, rnf = 0, 0, 0, 0, 0
             
             if required_cols == 12:
