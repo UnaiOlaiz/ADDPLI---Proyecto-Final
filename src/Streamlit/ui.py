@@ -267,11 +267,11 @@ elif opcion == "Predicciones":
 
     # 1. Selector de Modelo y su endpoint 
     MODEL_ENDPOINTS = {
-        "XGBoost (12 Features)": "predict_xgb", 
-        "Regresión Logística (12 Features)": "predict_logreg",
-        "SVM (12 Features)": "predict_svm",
-        "Random Forest (7 Features)": "predict_random_forest", 
-        "HDBSCAN (7 Features)": "cluster_hdbscan",
+        "XGBoost (Algoritmo de Clasificación)": "predict_xgb", 
+        "Regresión Logística (Algoritmo de Regresión)": "predict_logreg",
+        "SVM (Algoritmo de Clasificación)": "predict_svm",
+        "Random Forest (Algoritmo de Clasificación)": "predict_random_forest", 
+        "HDBSCAN (Algoritmo de Agrupación)": "cluster_hdbscan",
     }
     selected_model_display = st.selectbox(
         "Modelo a utilizar:", 
