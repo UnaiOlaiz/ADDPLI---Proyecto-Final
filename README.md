@@ -40,11 +40,16 @@ pip install -r requirements.txt
 
 5. `HDBSCAN`
 
-Para alistar los modelos creados, introduciremos el siguiente comando:
+Para listar los modelos creados, introduciremos el siguiente comando:
 ```bash
 bentoml models list
 ```
 Deberíamos de ver ahora parámetros como el nombre del modelo, el módulo empleado para la creación, tamaño y la fecha de creación.
+
+Para desplegar BentoML:
+```bash
+bentoml serve service:AI4I2020FailurePredictionService --port 3000
+```
 
 ## Pasos para ejecutar la aplicación de Streamlit (ui.py)
 Dentro del directorio del proyecto, ejecutar el siguiente comando para abrir localmente la interfaz gráfica trabajada con **Streamlit**.
