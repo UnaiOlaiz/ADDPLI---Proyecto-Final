@@ -7,8 +7,7 @@ import plotly.express as px
 import requests 
 import json
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+import bentoml
 
 # Configuración de la página
 st.set_page_config(
@@ -267,60 +266,25 @@ elif opcion == "Predicciones":
     st.header("Predicción de Fallos en Tiempo Real")
     st.markdown("Consulta la API de BentoML con nuevos parámetros. El servicio se ejecuta en http://localhost:3000.")
 
-    def build_features_7(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
-        numeric_cols = ["Air temperature [K]", "Process temperature [K]",
-                        "Rotational speed [rpm]", "Torque [Nm]", "Tool wear [min]"]
-
-        # dummies como en tu UI: L y M (H queda implícito)
-        type_L = (df["Type"] == "L").astype(int)
-        type_M = (df["Type"] == "M").astype(int)
-
-        X = df[numeric_cols].copy()
-        X["Type_L"] = type_L
-        X["Type_M"] = type_M
-
-        # orden exacto: 5 continuas + L + M  => 7
-        X = X[numeric_cols + ["Type_L", "Type_M"]]
-
-        y = df["Machine failure"].astype(int)
-        return X, y
-
-
-    def bento_predict_proba(endpoint: str, X: pd.DataFrame) -> np.ndarray:
-        payload = {"input_obj": {"input_data": X.values.tolist()}}
-        url = f"{BENTO_URL_BASE}/{endpoint}"
-        r = requests.post(url, json=payload, timeout=60)
-        r.raise_for_status()
-        return np.array(r.json())  # esperado shape (n,2)
-
-
-    @st.cache_data(show_spinner=False)
-    def compute_binary_metrics_via_bento(df: pd.DataFrame) -> pd.DataFrame:
-        X, y = build_features_7(df)
-
-        # Ajusta random_state si en vuestro notebook usasteis otro
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y
-        )
-
-        models = [
-            ("XGBoost", "predict_xgb"),
-            ("Regresión Logística", "predict_logreg"),
-            ("SVM", "predict_svm"),
+    def load_metrics_from_bentoml() -> pd.DataFrame:
+        model_tags = [
+            ("XGBoost", "ai4i2020_xgbclassifier:latest"),
+            ("Regresión Logística", "ai4i2020_logistic_regression:latest"),
+            ("SVM", "ai4i2020_support_vector_machine:latest"),
         ]
 
         rows = []
-        for name, endpoint in models:
-            proba = bento_predict_proba(endpoint, X_test)[:, 1]   # prob de clase 1
-            y_pred = (proba >= 0.5).astype(int)
+        for display_name, tag in model_tags:
+            m = bentoml.sklearn.get(tag)          # referencia al modelo guardado
+            md = m.info.metadata or {}            # metadata dict
 
             rows.append({
-                "Modelo": name,
-                "Accuracy": accuracy_score(y_test, y_pred),
-                "Precision": precision_score(y_test, y_pred, zero_division=0),
-                "Recall": recall_score(y_test, y_pred, zero_division=0),
-                "F1 Score": f1_score(y_test, y_pred, zero_division=0),
-                "AUC (ROC)": roc_auc_score(y_test, proba),
+                "Modelo": display_name,
+                "Accuracy": float(md.get("accuracy", float("nan"))),
+                "Precision": float(md.get("precision", float("nan"))),
+                "Recall": float(md.get("recall", float("nan"))),
+                "F1 Score": float(md.get("f1_score", float("nan"))),
+                "AUC (ROC)": float(md.get("auc_score", float("nan"))),
             })
 
         return pd.DataFrame(rows)
@@ -496,15 +460,20 @@ elif opcion == "Predicciones":
     # }
 
     try:
-        df_metricas = compute_binary_metrics_via_bento(df)
-        st.dataframe(df_metricas.style.highlight_max(
-            subset=['Accuracy','Precision','Recall','F1 Score','AUC (ROC)'],
-            axis=0,
-            props='font-weight: bold; background-color: #d8f5d8; color: #000000;'
-        ).format(precision=4), use_container_width=True)
+        df_metricas = load_metrics_from_bentoml()
+
+        st.dataframe(
+            df_metricas.style.highlight_max(
+                subset=['Accuracy','Precision','Recall','F1 Score','AUC (ROC)'],
+                axis=0,
+                props='font-weight: bold; background-color: #d8f5d8; color: #000000;'
+            ).format(precision=4),
+            use_container_width=True
+        )
     except Exception as e:
-        st.warning("No se pudieron calcular métricas automáticamente (¿BentoML está levantado?).")
+        st.warning("No se pudieron cargar las métricas desde BentoML Model Store.")
         st.code(str(e))
+
 
     best_row = df_metricas.loc[df_metricas["Recall"].idxmax()]
     best_model = best_row["Modelo"]
@@ -512,11 +481,10 @@ elif opcion == "Predicciones":
 
     st.info(f"""
     *Conclusión sobre la Predicción Binaria:*
-    Con los resultados actuales, el modelo con mejor capacidad para **detectar fallos reales** (mayor *Recall*) es **{best_model}**.  
-    El *Recall ({best_recall:.4f})* es especialmente importante en mantenimiento predictivo porque minimiza los **Falsos Negativos** (fallos reales que el modelo no detecta), que en un entorno industrial suelen ser el error más costoso.
-
-    En nuestro caso, **XGBoost** sigue siendo una opción muy sólida para producción por su buen equilibrio global de métricas y su robustez.
+    Según las métricas guardadas durante el *training*, el modelo con mejor *Recall* es **{best_model}**.  
+    El *Recall ({best_recall:.4f})* es clave en mantenimiento predictivo porque reduce los **Falsos Negativos** (fallos reales no detectados).
     """)
+
     # 2. Justificación y Visualizaciones del Mejor Modelo
     mejor_modelo_nombre = "XGBoost" 
     st.markdown(f"### 2. Análisis del Mejor Modelo: *{mejor_modelo_nombre}*")
