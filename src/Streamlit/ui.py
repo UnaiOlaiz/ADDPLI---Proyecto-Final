@@ -7,6 +7,8 @@ import plotly.express as px
 import requests 
 import json
 import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 # Configuración de la página
 st.set_page_config(
@@ -265,6 +267,64 @@ elif opcion == "Predicciones":
     st.header("Predicción de Fallos en Tiempo Real")
     st.markdown("Consulta la API de BentoML con nuevos parámetros. El servicio se ejecuta en http://localhost:3000.")
 
+    def build_features_7(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
+        numeric_cols = ["Air temperature [K]", "Process temperature [K]",
+                        "Rotational speed [rpm]", "Torque [Nm]", "Tool wear [min]"]
+
+        # dummies como en tu UI: L y M (H queda implícito)
+        type_L = (df["Type"] == "L").astype(int)
+        type_M = (df["Type"] == "M").astype(int)
+
+        X = df[numeric_cols].copy()
+        X["Type_L"] = type_L
+        X["Type_M"] = type_M
+
+        # orden exacto: 5 continuas + L + M  => 7
+        X = X[numeric_cols + ["Type_L", "Type_M"]]
+
+        y = df["Machine failure"].astype(int)
+        return X, y
+
+
+    def bento_predict_proba(endpoint: str, X: pd.DataFrame) -> np.ndarray:
+        payload = {"input_obj": {"input_data": X.values.tolist()}}
+        url = f"{BENTO_URL_BASE}/{endpoint}"
+        r = requests.post(url, json=payload, timeout=60)
+        r.raise_for_status()
+        return np.array(r.json())  # esperado shape (n,2)
+
+
+    @st.cache_data(show_spinner=False)
+    def compute_binary_metrics_via_bento(df: pd.DataFrame) -> pd.DataFrame:
+        X, y = build_features_7(df)
+
+        # Ajusta random_state si en vuestro notebook usasteis otro
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+
+        models = [
+            ("XGBoost", "predict_xgb"),
+            ("Regresión Logística", "predict_logreg"),
+            ("SVM", "predict_svm"),
+        ]
+
+        rows = []
+        for name, endpoint in models:
+            proba = bento_predict_proba(endpoint, X_test)[:, 1]   # prob de clase 1
+            y_pred = (proba >= 0.5).astype(int)
+
+            rows.append({
+                "Modelo": name,
+                "Accuracy": accuracy_score(y_test, y_pred),
+                "Precision": precision_score(y_test, y_pred, zero_division=0),
+                "Recall": recall_score(y_test, y_pred, zero_division=0),
+                "F1 Score": f1_score(y_test, y_pred, zero_division=0),
+                "AUC (ROC)": roc_auc_score(y_test, proba),
+            })
+
+        return pd.DataFrame(rows)
+
     # 1. Selector de Modelo y su endpoint 
     MODEL_ENDPOINTS = {
         "XGBoost (Algoritmo de Clasificación)": "predict_xgb", 
@@ -280,12 +340,12 @@ elif opcion == "Predicciones":
     endpoint_to_call = MODEL_ENDPOINTS[selected_model_display]
     
     # Columnas necesareas
-    if endpoint_to_call in ["predict_xgb", "predict_logreg", "predict_svm"]:
-        required_cols = 12
-    else:
-        required_cols = 7
+    # if endpoint_to_call in ["predict_xgb", "predict_logreg", "predict_svm"]:
+    #     required_cols = 12
+    # else:
+    #     required_cols = 7
 
-    st.subheader(f"Ingreso de Parámetros ({required_cols} Features Requeridas)")
+    st.subheader(f"Ingreso de Parámetros 7 Features Requeridas)")
     
     # Creacion delformulario para garantizar que los datos se envíen juntos
     with st.form("prediction_form"):
@@ -309,44 +369,41 @@ elif opcion == "Predicciones":
             type_M = 1 if machine_type == 'M' else 0
 
             # Inicializaión de los fallos
-            twf, hdf, pwf, osf, rnf = 0, 0, 0, 0, 0
+            # twf, hdf, pwf, osf, rnf = 0, 0, 0, 0, 0
             
-            if required_cols == 12:
-                st.markdown("*Fallos Históricos (5 Dummies):*")
-                twf = st.checkbox("TWF (Tool Wear Failure)", value=False)
-                hdf = st.checkbox("HDF (Heat Dissipation Failure)", value=False)
-                pwf = st.checkbox("PWF (Power Failure)", value=False)
-                osf = st.checkbox("OSF (Overstrain Failure)", value=False)
-                rnf = st.checkbox("RNF (Random Failure)", value=False)
-            else:
-                st.info("El modelo de 7 Features solo utiliza las variables continuas y el tipo de máquina (L, M).")
+            # if required_cols == 12:
+            #     st.markdown("*Fallos Históricos (5 Dummies):*")
+            #     twf = st.checkbox("TWF (Tool Wear Failure)", value=False)
+            #     hdf = st.checkbox("HDF (Heat Dissipation Failure)", value=False)
+            #     pwf = st.checkbox("PWF (Power Failure)", value=False)
+            #     osf = st.checkbox("OSF (Overstrain Failure)", value=False)
+            #     rnf = st.checkbox("RNF (Random Failure)", value=False)
+            # else:
+            #     st.info("El modelo de 7 Features solo utiliza las variables continuas y el tipo de máquina (L, M).")
         
         submitted = st.form_submit_button("Obtener Predicción")
         
         if submitted:
             st.warning("Verificando el orden de las features...")
 
-            if required_cols == 12:
-                input_features = [
-                    temp_aire,
-                    temp_proceso,
-                    velocidad,
-                    torque,
-                    desgaste,
-                    int(twf),
-                    int(hdf),
-                    int(pwf),
-                    int(osf),
-                    int(rnf),
-                    type_L,
-                    type_M,
-                ]
+            # if required_cols == 7:
+            #     input_features = [
+            #         temp_aire,
+            #         temp_proceso,
+            #         velocidad,
+            #         torque,
+            #         desgaste,
+            #         # int(twf),
+            #         # int(hdf),
+            #         # int(pwf),
+            #         # int(osf),
+            #         # int(rnf),
+            #         type_L,
+            #         type_M,
+            #     ]
 
-            else:
-                input_features = [
-                    temp_aire, temp_proceso, velocidad, torque, desgaste,
-                    type_L, type_M
-                ]
+            # else:
+            input_features = [temp_aire, temp_proceso, velocidad, torque, desgaste, type_L, type_M]
             
             # Función para llamar a la API con payload completo (input_obj)
             def call_bento_api_raw(endpoint_name: str, payload: dict) -> dict:
@@ -429,33 +486,37 @@ elif opcion == "Predicciones":
     st.write("Métricas de los modelos que predicen 'Machine Failure' (Clase 0 o 1).")
 
     # Datos REALES (Extraídos del notebook)
-    data_clasificacion = {
-        'Modelo': ["XGBoost", "Regresión Logística", "SVM"],
-        'Accuracy': [0.9990, 0.9990, 0.9990],
-        'Precision': [1.0000, 1.0000, 1.0000], 
-        'Recall': [0.9672, 0.9672, 0.9672],
-        'F1 Score': [0.9833, 0.9833, 0.9833],
-        'AUC (ROC)': [0.9990, 0.9990, 0.9990]
-    }
+    # data_clasificacion = {
+    #     'Modelo': ["XGBoost", "Regresión Logística", "SVM"],
+    #     'Accuracy': [0.9990, 0.9990, 0.9990],
+    #     'Precision': [1.0000, 1.0000, 1.0000], 
+    #     'Recall': [0.9672, 0.9672, 0.9672],
+    #     'F1 Score': [0.9833, 0.9833, 0.9833],
+    #     'AUC (ROC)': [0.9990, 0.9990, 0.9990]
+    # }
 
-    df_metricas = pd.DataFrame(data_clasificacion)
-
-    # Resaltar la mejor métrica en cada columna
-    st.dataframe(
-        df_metricas.style.highlight_max(
-            subset=['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC (ROC)'], 
-            axis=0, 
+    try:
+        df_metricas = compute_binary_metrics_via_bento(df)
+        st.dataframe(df_metricas.style.highlight_max(
+            subset=['Accuracy','Precision','Recall','F1 Score','AUC (ROC)'],
+            axis=0,
             props='font-weight: bold; background-color: #d8f5d8; color: #000000;'
-        ).format(precision=4), 
-        use_container_width=True
-    )
+        ).format(precision=4), use_container_width=True)
+    except Exception as e:
+        st.warning("No se pudieron calcular métricas automáticamente (¿BentoML está levantado?).")
+        st.code(str(e))
 
-    st.info("""
+    best_row = df_metricas.loc[df_metricas["Recall"].idxmax()]
+    best_model = best_row["Modelo"]
+    best_recall = float(best_row["Recall"])
+
+    st.info(f"""
     *Conclusión sobre la Predicción Binaria:*
-    Todos los modelos son excepcionalmente buenos, indicando que las features preprocesadas son muy predictivas. 
-    Se elige *XGBoost* por su reconocida robustez en producción. El *Recall (0.9672)* es vital ya que minimiza los Falsos Negativos (fallos reales no detectados).
-    """)
+    Con los resultados actuales, el modelo con mejor capacidad para **detectar fallos reales** (mayor *Recall*) es **{best_model}**.  
+    El *Recall ({best_recall:.4f})* es especialmente importante en mantenimiento predictivo porque minimiza los **Falsos Negativos** (fallos reales que el modelo no detecta), que en un entorno industrial suelen ser el error más costoso.
 
+    En nuestro caso, **XGBoost** sigue siendo una opción muy sólida para producción por su buen equilibrio global de métricas y su robustez.
+    """)
     # 2. Justificación y Visualizaciones del Mejor Modelo
     mejor_modelo_nombre = "XGBoost" 
     st.markdown(f"### 2. Análisis del Mejor Modelo: *{mejor_modelo_nombre}*")
@@ -474,13 +535,31 @@ elif opcion == "Predicciones":
             
     with col_roc:
         st.markdown("#### Curva ROC y Área bajo la Curva (AUC)")
-        st.write(f"El valor de AUC de {data_clasificacion['AUC (ROC)'][0]:.4f} confirma su alta capacidad discriminatoria.")
-        
-    
+
+        # Tomamos el AUC del modelo XGBoost desde la tabla automática
         try:
-            st.image("img/xgb_rocauc.png", caption="Curva ROC de XGBoost") 
+            xgb_auc = float(
+                df_metricas.loc[df_metricas["Modelo"] == "XGBoost", "AUC (ROC)"].iloc[0]
+            )
+
+            st.write(
+                f"El valor de AUC de **{xgb_auc:.4f}** confirma su alta capacidad discriminatoria."
+            )
+        except Exception as e:
+            st.warning("No se pudo obtener el AUC automáticamente desde la tabla de métricas.")
+            st.code(str(e))
+
+        # Imagen de la curva ROC (si existe)
+        try:
+            st.image(
+                "img/xgb_rocauc.png",
+                caption="Curva ROC de XGBoost"
+            )
         except Exception:
-            st.warning("No se encontró la imagen 'img/xgb_rocauc.png'. Asegúrate de que está en la carpeta 'img'.")
+            st.warning(
+                "No se encontró la imagen 'img/xgb_rocauc.png'. "
+                "Asegúrate de que está en la carpeta 'img'."
+            )
 
     # 3. Evaluación de Random Forest (Clasificación de Fallos Específicos) 
     st.markdown("### 3. Evaluación de Random Forest (Clasificación Multi-Etiqueta)")

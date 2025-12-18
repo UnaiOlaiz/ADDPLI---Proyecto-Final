@@ -15,12 +15,12 @@ RF_SCALER_TAG        = "ai4i2020_scaler_random_forest:latest"
 HDBSCAN_SCALER_TAG   = "ai4i2020_scaler_hdbscan:latest"
 
 
-# Esquema para modelos de 12 columnas (Logistic, SVM, XGB)
-class Input12Features(BaseModel):
+# Esquema para modelos de 7 columnas (Logistic, SVM, XGB)
+class Input7Features2(BaseModel):
     # Definimos que esperamos una lista de listas de floats
     input_data: list[list[float]] = Field(
-        default=[[298.9, 309.1, 2861, 4.6, 143, 0, 0, 1, 0, 0, 1, 0]], # Datos de predicción de prueba estándar
-        description="Matriz de entrada con 12 características."
+        default=[[298.9, 309.1, 2861, 4.6, 143, 1, 0]], # Datos de predicción de prueba estándar
+        description="Matriz de entrada con 7 características."
     )
 
 # Esquema para modelos de 7 columnas (Random Forest, HDBSCAN)
@@ -68,10 +68,10 @@ class AI4I2020FailurePredictionService:
             
         return data
 
-    # Logistic Regression (Usa Input12Features)
+    # Logistic Regression (Usa Input7Features2)
     @bentoml.api
-    def predict_logreg(self, input_obj: Input12Features) -> np.ndarray:
-        data = self._prepare_data(input_obj, 12)
+    def predict_logreg(self, input_obj: Input7Features2) -> np.ndarray:
+        data = self._prepare_data(input_obj, 7)
         scaled = logr_scaler.transform(data)
         return logr_model.predict_proba(scaled)
 
@@ -82,19 +82,19 @@ class AI4I2020FailurePredictionService:
         scaled = rf_scaler.transform(data)
         return rf_model.predict(scaled)
 
-    # SVM (Usa Input12Features)
+    # SVM (Usa Input7Features2)
     @bentoml.api
-    def predict_svm(self, input_obj: Input12Features) -> np.ndarray:
-        data = self._prepare_data(input_obj, 12)
+    def predict_svm(self, input_obj: Input7Features2) -> np.ndarray:
+        data = self._prepare_data(input_obj, 7)
         scaled = svm_scaler.transform(data)
         return svm_model.predict_proba(scaled)
 
-    # XGBoost (Usa Input12Features)
+    # XGBoost (Usa Input7Features2)
     @bentoml.api
-    def predict_xgb(self, input_obj: Input12Features) -> np.ndarray:
-        data = self._prepare_data(input_obj, 12)
+    def predict_xgb(self, input_obj: Input7Features2) -> np.ndarray:
+        data = self._prepare_data(input_obj, 7)
         scaled = xgb_scaler.transform(data)
-        return xgb_model.predict(scaled)
+        return xgb_model.predict_proba(scaled)
 
     # HDBSCAN (Usa Input7Features)
     @bentoml.api
