@@ -53,7 +53,7 @@ Deberíamos de ver ahora parámetros como el nombre del modelo, el módulo emple
 
 Para desplegar BentoML, primero tendremos que navegar a la ruta correcta:
 ```bash
-cd src/Streamlit/BentoML
+cd src/BentoML
 ```
 Y luego introducir el comando correcto:
 ```bash
