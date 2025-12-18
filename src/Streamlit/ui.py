@@ -568,10 +568,10 @@ elif opcion == "Predicciones":
     """)
 
     # Datos REALES 
-    rf_accuracy = 0.9800
-    rf_precision = 0.6979
-    rf_recall = 0.4722
-    rf_f1 = 0.5523
+    rf_accuracy = 0.9815
+    rf_precision = 0.7468
+    rf_recall = 0.4638
+    rf_f1 = 0.5681
 
     col_rf1, col_rf2, col_rf3 = st.columns(3)
     col_rf1.metric(label="Accuracy Total (RF)", value=f"{rf_accuracy:.2%}")
