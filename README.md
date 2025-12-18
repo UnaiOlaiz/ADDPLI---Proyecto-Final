@@ -2,25 +2,30 @@
 
 ## Estructura del Proyecto
 ```
-── data
-│   ├── ai4i2020_cleaned.csv
-│   ├── ai4i2020.csv
-│   └── datos_para_demo.csv
+├── data
+│   ├── ai4i2020_cleaned.csv
+│   ├── ai4i2020.csv
+│   └── datos_para_demo.csv
+├── img
+│   ├── xgb_confusion.png
+│   └── xgb_rocauc.png
 ├── README.md
 ├── requirements.txt
 └── src
     ├── BentoML
-    │   ├── __pycache__
-    │   │   ├── service.cpython-313.pyc
-    │   │   └── service_v2.cpython-313.pyc
-    │   ├── service_notebook.ipynb
-    │   ├── service.py
-    │   └── train.ipynb
+    │   ├── __pycache__
+    │   │   ├── service.cpython-311.pyc
+    │   │   ├── service.cpython-313.pyc
+    │   │   └── service_v2.cpython-313.pyc
+    │   ├── service_notebook.ipynb
+    │   ├── service.py
+    │   └── train.ipynb
     ├── Limpieza
-    │   └── cleaning.ipynb
+    │   └── cleaning.ipynb
     └── Streamlit
         ├── ui.ipynb
         └── ui.py
+
 ```
 
 ## Instalación de dependencias
@@ -46,7 +51,11 @@ bentoml models list
 ```
 Deberíamos de ver ahora parámetros como el nombre del modelo, el módulo empleado para la creación, tamaño y la fecha de creación.
 
-Para desplegar BentoML:
+Para desplegar BentoML, primero tendremos que navegar a la ruta correcta:
+```bash
+cd src/Streamlit/
+```
+Y luego introducir el comando correcto:
 ```bash
 bentoml serve service:AI4I2020FailurePredictionService --port 3000
 ```
